@@ -1,6 +1,6 @@
 # LunaRec
 
-**PRIVATE — do not make this repository public.**
+
 
 India provides no grace period for patent novelty. Any public disclosure before
 a provisional application is filed destroys novelty permanently, and making the
