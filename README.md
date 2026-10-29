@@ -1,12 +1,6 @@
 # LunaRec
 
 
-
-India provides no grace period for patent novelty. Any public disclosure before
-a provisional application is filed destroys novelty permanently, and making the
-repository private again afterwards does not undo it. That applies to this
-repository, to Kaggle notebooks, to posted slides, and to project showcases.
-
 ---
 
 Verification-allocation for lunar landing-site selection, framed as
