@@ -83,3 +83,22 @@ GP prior is fitted per scene at every run — nothing is hardcoded.
 - **The criterion needs budget before it helps.** With all three attributes
   unknown it trails simpler policies below roughly 10–50 acquisitions depending
   on the scene, then pulls away.
+- **The hazard label is illumination-conditional.** `shadow_local` measures
+  shadow fraction against a local background, and shadows are cast by the sun.
+  Scenes imaged at a ~80° solar azimuth difference show the label decorrelating
+  (r = 0.008) alongside raw brightness (r = −0.031); only scenes under matched
+  illumination agree (r = 0.88–0.955). So the quantity is *shadow hazard under a
+  given illumination*, not intrinsic boulder density, and a shortlist is valid
+  only for the illumination it was measured under. A different landing window
+  would require new imagery.
+
+  This strengthens rather than weakens the case for acquisition: an
+  illumination-conditional quantity cannot be supplied by a static elevation
+  model, so the imaging cannot be replaced by computation.
+
+- **The spatial model is partially identified.** Across-strip variogram ranges
+  are stable under a doubled fit window; along-strip ranges are not, because the
+  strips contain real terrain variation at scales longer than they sample. A
+  scene-to-scene difference test rules out an acquisition artefact (R² < 0.006
+  in both directions). The pipeline fits isotropically; the sensitivity analysis
+  bounds what that costs.

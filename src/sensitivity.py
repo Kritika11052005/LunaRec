@@ -107,10 +107,32 @@ def main(path, n_rep=12, budget=60):
         print('%-12.2f %10.3f %8s %10.2f%s' % (mult, m, f"{w}/{n_}", t, tag))
     E.PRIOR = base_prior
 
+    print("\n4. nugget misspecification  (the parameter that is NOT identified)")
+    print("   all three attribute nuggets overridden to the same value")
+    print('%-12s %10s %8s %10s' % ('nugget', 'margin', 'wins', 't'))
+    # The nugget is variance at ZERO separation, and the patch grid is 200 m --
+    # so there is no data below 200 m and the parameter is extrapolation, not
+    # measurement. Three estimators give three answers on the same scenes:
+    #
+    #   weighted-LS variogram (old weighting)  0.44 - 0.52
+    #   Cressie-weighted variogram             0.24 - 0.33
+    #   marginal likelihood                    0.00 - 0.02
+    #
+    # An absolute override rather than a multiplier, because the fitted
+    # illumination nugget is 0.000 and scaling it leaves it at zero -- which
+    # would silently exclude the attribute from the sweep.
+    for nug in (0.0, 0.05, 0.15, 0.30, 0.45, 0.60):
+        E.PRIOR = [(r, nug) for r, _ in base_prior]
+        m, w, n_, t = margin(df, n_rep, budget)
+        tag = '   <- fitted (Cressie)' if abs(nug - 0.30) < 1e-9 else ''
+        print('%-12.2f %10.3f %8s %10.2f%s' % (nug, m, f"{w}/{n_}", t, tag))
+    E.PRIOR = base_prior
+
     print("\nreading this: a margin that stays positive with high win counts")
-    print("across all three sweeps means the advantage is a property of the")
-    print("criterion. A margin that collapses outside a narrow band means it")
-    print("is a property of the setting, and the paper must say so.")
+    print("across all four sweeps means the advantage is a property of the")
+    print("criterion. The nugget sweep matters most -- that parameter is not")
+    print("identified by 200 m-spaced data, so the result must hold across the")
+    print("whole span the estimators disagree over, not just at a fitted value.")
 
 
 if __name__ == '__main__':

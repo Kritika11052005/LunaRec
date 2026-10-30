@@ -59,24 +59,53 @@ geographic blocks**, not four independent scenes. Any claim phrased as
 
 ## Fitted GP priors, per scene and attribute
 
-Measured by `src/fit_variogram.py`, not assumed. An earlier revision hardcoded
-1100 m and a nugget of 0.10, which were wrong by roughly 3× and 5× against
-every scene below.
+Measured by `src/fit_variogram.py`, not assumed.
 
 | scene | hazard (range / nugget) | illumination | texture |
 |---|---|---|---|
-| `0858` | 2535 m / 0.436 | 1117 m / 0.000 | 1850 m / 0.477 |
-| `1647a` | 2750 m / 0.523 | 1221 m / 0.081 | 2523 m / 0.671 |
-| `C1` | 3232 m / 0.451 | 2029 m / 0.122 | 2648 m / 0.267 |
-| `C2` | 3525 m / 0.446 | 1984 m / 0.079 | 2506 m / 0.313 |
+| `0858` | 1819 m / 0.235 | 1143 m / 0.000 | 1504 m / 0.345 |
+| `1647a` | 1611 m / 0.288 | 1148 m / 0.000 | 1660 m / 0.527 |
+| `C1` | 2394 m / 0.297 | 1896 m / 0.054 | 2496 m / 0.225 |
+| `C2` | 2782 m / 0.332 | 1902 m / 0.039 | 2347 m / 0.266 |
 
-Variogram fit R² runs 0.75–0.99 across all twelve fits.
+Variogram fit R² runs 0.742–0.984.
 
-The hazard nugget of ~0.45 is a result in its own right, not a nuisance term:
-read against the scene-to-scene repeatability of 0.88 (cluster B), it says
-roughly half the hazard variance is real structure finer than the 200 m patch
-grid rather than noise. Hazard cannot be extrapolated from neighbouring
-patches, which is why high-resolution verification imaging is needed at all.
+**These supersede an earlier table** listing ranges of 2535–3525 m and hazard
+nuggets of 0.436–0.523. Those came from a weighting defect in
+`fit_variogram.fit()`: `sigma = 1/sqrt(counts)` weights each bin by the square
+root of its pair count, and pair counts *grow* with lag (3,675 pairs at 241 m
+against 11,621 at 2,035 m), so the fit was dominated by long lags, missed its
+own shortest-lag point by ~0.19, and inflated the nugget to compensate. Cressie
+weights, `N(h)/γ(h)²`, upweight short lags where γ is small. Shortest-lag fit
+error improved from ~0.19 to 0.035–0.095.
+
+### On the nugget, and what replaced it
+
+An earlier version of this document read the ~0.45 hazard nugget as evidence
+that half the label's variance is real structure finer than the 200 m grid, and
+used it to argue that hazard cannot be extrapolated from neighbouring patches.
+**That claim is withdrawn.** The nugget is variance at *zero* separation, the
+patch grid is 200 m, and no estimator can observe below it — the quantity is
+extrapolation, not measurement. Three estimators on the same data gave 0.44–0.52
+(old weighting), 0.24–0.33 (Cressie) and ~0.00 (marginal likelihood).
+
+The likelihood's zero is an artefact: `fit_gp.py` assumes Gaussianity, and the
+disagreement tracks skewness exactly — every symmetric attribute shows the two
+methods agreeing to within 0.08, every right-skewed one (hazard skew 0.87–1.71)
+shows the likelihood collapsing the nugget to zero. The Cressie variogram is
+distribution-free and is the defensible estimator here.
+
+The argument the nugget was carrying is now made by direct measurement instead:
+
+| | hazard |
+|---|---|
+| nearest neighbour, 200 m away, predicts a patch at | r = 0.686–0.768 |
+| the same patch imaged again predicts it at | r = 0.884–0.955 |
+
+In variance terms, imaging a patch explains **78–91%** of its hazard while its
+neighbour explains **47–59%** — roughly 30 percentage points that only an
+acquisition can buy. The gain is positive in all twelve scene-attribute
+combinations. No model, no extrapolation, no estimator dependence.
 
 ## Why DEM attributes are excluded
 
