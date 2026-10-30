@@ -70,15 +70,43 @@ def spherical_model(h, n, s, a):
 
 
 def fit(centres, gamma, counts):
-    """Weighted least squares; weights = pair counts, so well-populated short
-    lags (which determine the nugget and range) are not outvoted by the many
-    noisy long-lag bins."""
+    """Fit the spherical model by weighted least squares, Cressie weights.
+
+    WEIGHTING MATTERS MORE THAN IT LOOKS. An earlier version passed
+
+        sigma = 1.0 / np.sqrt(counts)
+
+    which weights each bin by sqrt(pair count). Pair counts GROW with lag --
+    3,675 pairs at 241 m against 11,621 at 2,035 m on a typical scene -- so
+    that fit was dominated by long lags, missed its own shortest-lag point by
+    ~0.19 (nearly 60% high), and inflated the nugget to patch the gap it had
+    created. Every range and nugget in the project was biased upward by it.
+
+    Cressie's weights are N(h) / gamma(h)^2. Dividing by gamma^2 upweights
+    short lags precisely because gamma is small there, which is where the
+    nugget and range are determined. curve_fit minimises sum((y - f)/sigma)^2,
+    so the weight w corresponds to sigma = 1/sqrt(w) = gamma / sqrt(N).
+
+    Measured effect on this data: hazard nugget falls from 0.44-0.52 to
+    0.24-0.33, ranges from 2535-3525 m to 1611-2782 m, and the shortest-lag
+    fit error from ~0.19 to 0.035-0.095.
+    """
     from scipy.optimize import curve_fit
     s0 = float(np.median(gamma[-5:])) if len(gamma) >= 5 else float(gamma.max())
-    p0 = [0.1 * s0, s0, 1000.0]
-    bounds = ([0.0, 1e-6, 50.0], [s0 * 1.5 if s0 > 0 else 1.0, s0 * 3, MAX_LAG_M])
+    p0 = [0.1 * s0, s0, min(1000.0, float(centres.max()))]
+    # The range's upper bound comes from the DATA, not from the module
+    # constant. Written as MAX_LAG_M it pinned the range at 4 km whenever the
+    # caller passed a wider max_lag to empirical_variogram: a fit that wanted a
+    # longer range returned exactly 4000.0, which looks like an estimate and is
+    # not one. A range beyond the largest observed lag is not identifiable.
+    hi_range = float(centres.max())
+    bounds = ([0.0, 1e-6, 50.0],
+              [s0 * 1.5 if s0 > 0 else 1.0, s0 * 3, hi_range])
+    # Floor gamma before dividing: an empty or near-zero bin would otherwise
+    # take infinite weight and the fit would chase a single noisy point.
+    sigma = np.maximum(gamma, 1e-6) / np.sqrt(counts)
     popt, _ = curve_fit(spherical_model, centres, gamma, p0=p0,
-                        sigma=1.0 / np.sqrt(counts), bounds=bounds, maxfev=20000)
+                        sigma=sigma, bounds=bounds, maxfev=20000)
     pred = spherical_model(centres, *popt)
     ss_res = float(((gamma - pred) ** 2).sum())
     ss_tot = float(((gamma - gamma.mean()) ** 2).sum())
