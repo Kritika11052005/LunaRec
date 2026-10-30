@@ -1,0 +1,53 @@
+# LunaRec environment
+#
+# The reference runs used Python 3.13 with NumPy 2.5.1 and a SciPy built
+# against NumPy <2.3 -- a mismatch that works but warns on every import. Do not
+# reproduce it. The pipeline's results have been shown to be stack-independent:
+# Windows (NumPy 2.5.1) and Linux with different versions produced bit-identical
+# output on all four scenes, so a consistent environment reproduces the numbers
+# and a matching version string is not what guarantees it.
+#
+# Validate by reproducing a known result, not by comparing version strings.
+# See the check at the bottom of this file.
+
+# --- core numerics -------------------------------------------------------
+# NumPy pinned to the version the reference results were produced with.
+numpy==2.5.1
+# SciPy unpinned on purpose: let the resolver pick a build that matches the
+# NumPy above. Pinning it is what produced the mismatch in the first place.
+scipy>=1.16
+pandas>=2.2
+
+# --- geospatial ----------------------------------------------------------
+# rasterio ships its own GDAL wheels on Windows; no system GDAL needed.
+rasterio>=1.4
+
+# --- notebooks and figures -----------------------------------------------
+matplotlib>=3.9
+jupyterlab>=4.2
+
+# --- NOT required --------------------------------------------------------
+# No torch, tensorflow, CUDA or cuDNN. There is no neural network in this
+# project. The model is a Gaussian process; the heavy operations are dense
+# linear solves of at most a few hundred rows, which run on CPU in
+# milliseconds. An RTX 4060 contributes nothing here, and installing a CUDA
+# stack costs several GB for no gain.
+#
+# Memory is not a constraint either: the largest array the evaluation builds is
+# 400x400, and the variogram's pairwise step is 1400x1400. The 15 GB DEM strips
+# are read through windowed rasterio reads (src/clip_dem.py), never loaded
+# whole, so 16 GB RAM is comfortable.
+
+# --- environment check ----------------------------------------------------
+# After installing, confirm the environment reproduces a known result:
+#
+#   python src/evaluate.py data/patches/current/patches_C2.csv 15 150
+#
+# Expect, for the OHRC-only formulation:
+#   fitted priors   hazard 3525 m / 0.446, illumination 1984 m / 0.079,
+#                   texture 2506 m / 0.313
+#   P@K final       disagreement 0.770, max-variance 0.607
+#   vs ablation     +0.337, 14/15, p = 8.6e-05
+#
+# Matching those means the environment is right. A SciPy/NumPy warning on
+# import means it is not -- fix that before trusting any output.
