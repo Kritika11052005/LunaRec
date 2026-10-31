@@ -1,0 +1,6 @@
+﻿patches_C2.csv: 1930 patches available, 12 reps, budget 150 (fixed)
+cost grows as n^2: expect ~1x, 4x, 16x relative to the first setting
+priors: 2782m/0.332, 1902m/0.039, 2347m/0.266
+K = 20 throughout, so K/n falls as n grows (5.0%, 2.5%, 1.2%)
+
+n         budget   crossover   as % of n     margin     wins        t

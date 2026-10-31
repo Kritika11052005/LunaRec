@@ -28,16 +28,28 @@ max-variance      0.142    0.178    0.280    0.310    0.365    0.472    0.510   
 voi-value         0.082    0.107    0.122    0.158    0.230    0.327    0.395    0.498
 disagreement      0.087    0.133    0.177    0.233    0.375    0.583    0.697    0.805
 per-rep results -> data\patches\current\patches_C1_per_rep.csv
+per-rep curves  -> data\patches\current\patches_C1_per_rep_curve.csv  (22650 rows)
 
 full curve -> data\patches\current\patches_C1_precision_curve.csv  (for the figure)
 
 technical effect -- imaging operations consumed
-policy         acquisitions to P@K>=0.90
+  (a) acquisitions to a FIXED target of P@K >= 0.90
+policy               acq to P@K>=0.90
 random                          151.0   (not reached within budget)
 coverage                        151.0   (not reached within budget)
 max-variance                    151.0   (not reached within budget)
 voi-value                       151.0   (not reached within budget)
 disagreement                    139.0
+  -> fewer than two policies reach the fixed target, so no saving
+     can be quoted from it. Use (b).
+
+  (b) acquisitions to MATCH the best baseline's full-budget score
+      best baseline   : max-variance  (target 0.610)
+      criterion reaches it at 83.0 of 150 acquisitions
+      saved           : 67.0 +/- 12.5 (95% CI), 45%
+      reps where the criterion got there early: 28/30
+      -> this is the sentence for the specification: a measured
+         reduction in use of a scarce imaging instrument.
 
 paired comparison on Precision@K -- criterion vs each baseline
 baseline        mean diff       wins   t (paired)          p
@@ -49,4 +61,3 @@ voi-value           0.307      29/30        10.00    6.6e-11  <- ABLATION
 disagreement vs max-variance: +20.5% final disagreement
 (negative = worse; the criterion must beat max-variance to matter)
 acquisitions-saved comparison needs both policies to reach P@K>=0.90 within the budget; raise the budget to quote it.
-

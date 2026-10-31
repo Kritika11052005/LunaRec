@@ -1,0 +1,52 @@
+﻿data\patches\current\patches_C2.csv: 1930 patches, budget=150, 20 reps per setting
+  hazard        range   2782 m  nugget 0.332  variogram R2 0.930
+  illumination  range   1902 m  nugget 0.039  variogram R2 0.963
+  texture       range   2347 m  nugget 0.266  variogram R2 0.972
+
+margin = Precision@K(criterion) - Precision@K(ablation), paired
+
+1. stakeholder weight spread  (the unmeasured constant)
+W_SPREAD         margin     wins          t
+0.01              0.320    19/20       8.85
+0.03              0.257    18/20       6.64
+0.05              0.307    19/20       9.29
+0.07              0.278    20/20      10.00   <- current
+0.10              0.300    20/20      11.05
+0.15              0.257    19/20       6.85
+0.25              0.295    20/20      10.69
+
+2. shortlist length
+K                margin     wins          t
+5                 0.440    19/20       8.90
+10                0.335    18/20       6.51
+20                0.278    20/20      10.00   <- current
+30                0.182    17/20       6.23
+50                0.047    14/20       2.26
+
+3. prior misspecification  (how wrong can the covariance be?)
+   all three attribute ranges scaled together
+range x          margin     wins          t
+0.25              0.240    18/20       7.46
+0.50              0.217    20/20      10.72
+1.00              0.278    20/20      10.00   <- fitted
+2.00              0.170    14/20       3.41
+3.00              0.113    13/20       2.24
+4.00              0.042    11/20       1.07
+
+4. nugget misspecification  (the parameter that is NOT identified)
+   all three attribute nuggets overridden to the same value
+nugget           margin     wins          t
+0.00              0.212    19/20       9.28
+0.05              0.253    20/20      12.22
+0.15              0.310    19/20       9.52
+0.30              0.347    18/20       6.31   <- fitted (Cressie)
+0.45              0.372    18/20       7.46
+0.60              0.455    20/20      11.31
+
+24 settings -> data\patches\current\patches_C2_sensitivity.csv
+
+reading this: a margin that stays positive with high win counts
+across all four sweeps means the advantage is a property of the
+criterion. The nugget sweep matters most -- that parameter is not
+identified by 200 m-spaced data, so the result must hold across the
+whole span the estimators disagree over, not just at a fitted value.
