@@ -21,6 +21,7 @@ Ratios are per-attribute multipliers on the FITTED range, in ATTRS order
 """
 import os
 import sys
+import time
 
 import numpy as np
 import pandas as pd
@@ -29,15 +30,27 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import evaluate as E
 
 
-def margin(df, n_rep, budget, seed0=100):
-    """Paired margin of 'disagreement' over the ablation, on identical subsamples."""
+def margin(df, n_rep, budget, seed0=100, label=""):
+    """Paired margin of 'disagreement' over the ablation, on identical subsamples.
+
+    Progress goes to STDERR so redirecting stdout keeps the bar on screen.
+    """
     ours, abl = [], []
+    _t0 = time.time()
     for rep in range(n_rep):
         sub = (df.sample(min(400, len(df)), random_state=rep).reset_index(drop=True)
                if len(df) > 400 else df)
         for pol, acc in (('disagreement', ours), ('voi-value', abl)):
             h = E.run(sub, pol, budget, np.random.default_rng(seed0 + rep))
             acc.append(h[-1]['prec'])
+        _el = time.time() - _t0
+        _eta = _el / (rep + 1) * (n_rep - rep - 1)
+        _bar = "#" * int(20 * (rep + 1) / n_rep)
+        print("\r  %-24s [%-20s] rep %d/%d  %4.1fm  ~%4.1fm left  "
+              % (label[:24], _bar, rep + 1, n_rep, _el / 60, _eta / 60),
+              end="", file=sys.stderr, flush=True)
+    print("", file=sys.stderr)
+
     d = np.array(ours) - np.array(abl)
     t = (d.mean() / (d.std(ddof=1) / np.sqrt(len(d)))) if d.std(ddof=1) > 0 else np.inf
     return float(d.mean()), int((d > 0).sum()), len(d), float(t)
@@ -68,7 +81,7 @@ def main(path, short_s, long_s, n_rep=20, budget=150, only=None):
         if key not in want:
             continue
         E.PRIOR = [(r * m, n) for (r, n), m in zip(base, mult)]
-        m_, w_, n_, t_ = margin(full, n_rep, budget)
+        m_, w_, n_, t_ = margin(full, n_rep, budget, label=name)
         out[name] = (m_, w_, t_)
         print("%-26s %10.3f %8s %9.2f  %s"
               % (name, m_, f"{w_}/{n_}", t_,
