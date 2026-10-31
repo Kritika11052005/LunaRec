@@ -51,8 +51,16 @@ def margin(df, n_rep, budget):
             got[p] = h[-1]['prec']
         diffs.append(got['disagreement'] - got['voi-value'])
     d = np.array(diffs)
-    t = d.mean() / (d.std(ddof=1) / np.sqrt(len(d))) if d.std(ddof=1) > 0 else np.inf
-    return d.mean(), int((d > 0).sum()), len(d), t
+    sd = d.std(ddof=1)
+    if sd > 0:
+        t = d.mean() / (sd / np.sqrt(len(d)))
+    elif d.mean() > 0:
+        t = np.inf          # identical positive differences every rep
+    elif d.mean() < 0:
+        t = -np.inf
+    else:
+        t = 0.0             # all differences exactly zero -- NOT infinite
+    return d.mean(), int((d > 0).sum()), len(d), float(t)
 
 
 def main(path, n_rep=12, budget=60):
@@ -75,11 +83,26 @@ def main(path, n_rep=12, budget=60):
 
     base_spread, base_k, base_prior = E.W_SPREAD, E.K, list(E.PRIOR)
 
+    # Collect every setting into one table. Printed output is for reading;
+    # the CSV is what a notebook should consume, so the figures and the text
+    # cannot drift apart and the numbers stay reproducible from the repo.
+    rows = []
+    scene = os.path.basename(path).replace('.csv', '')
+
+    def record(axis, setting, m, w, n_, t):
+        rows.append({'scene': scene, 'axis': axis, 'setting': setting,
+                     'margin': m, 'wins': w, 'n_rep': n_, 't': t,
+                     'W_SPREAD': E.W_SPREAD, 'K': E.K,
+                     'ranges': ';'.join(f'{r:.0f}' for r, _ in E.PRIOR),
+                     'nuggets': ';'.join(f'{n:.3f}' for _, n in E.PRIOR),
+                     'budget': budget})
+
     print("1. stakeholder weight spread  (the unmeasured constant)")
     print('%-12s %10s %8s %10s' % ('W_SPREAD', 'margin', 'wins', 't'))
     for s in (0.01, 0.03, 0.05, 0.07, 0.10, 0.15, 0.25):
         E.W_SPREAD = s
         m, w, n, t = margin(df, n_rep, budget)
+        record('W_SPREAD', s, m, w, n, t)
         tag = '   <- current' if abs(s - base_spread) < 1e-9 else ''
         print('%-12.2f %10.3f %8s %10.2f%s' % (s, m, f"{w}/{n}", t, tag))
     E.W_SPREAD = base_spread
@@ -89,6 +112,7 @@ def main(path, n_rep=12, budget=60):
     for k_ in (5, 10, 20, 30, 50):
         E.K = k_
         m, w, n, t = margin(df, n_rep, budget)
+        record('K', k_, m, w, n, t)
         tag = '   <- current' if k_ == base_k else ''
         print('%-12d %10.3f %8s %10.2f%s' % (k_, m, f"{w}/{n}", t, tag))
     E.K = base_k
@@ -96,13 +120,14 @@ def main(path, n_rep=12, budget=60):
     print("\n3. prior misspecification  (how wrong can the covariance be?)")
     print("   all three attribute ranges scaled together")
     print('%-12s %10s %8s %10s' % ('range x', 'margin', 'wins', 't'))
-    for mult in (0.25, 0.5, 1.0, 2.0, 4.0):
+    for mult in (0.25, 0.5, 1.0, 2.0, 3.0, 4.0):
         # PRIOR is a list of (range_m, nugget) per attribute. Scaling every
         # range together asks what happens when the spatial model is wrong in
         # the same direction everywhere, which is how a misfitted variogram
         # would actually fail -- not one attribute at a time.
         E.PRIOR = [(r * mult, n) for r, n in base_prior]
         m, w, n_, t = margin(df, n_rep, budget)
+        record('range_mult', mult, m, w, n_, t)
         tag = '   <- fitted' if mult == 1.0 else ''
         print('%-12.2f %10.3f %8s %10.2f%s' % (mult, m, f"{w}/{n_}", t, tag))
     E.PRIOR = base_prior
@@ -124,9 +149,14 @@ def main(path, n_rep=12, budget=60):
     for nug in (0.0, 0.05, 0.15, 0.30, 0.45, 0.60):
         E.PRIOR = [(r, nug) for r, _ in base_prior]
         m, w, n_, t = margin(df, n_rep, budget)
+        record('nugget', nug, m, w, n_, t)
         tag = '   <- fitted (Cressie)' if abs(nug - 0.30) < 1e-9 else ''
         print('%-12.2f %10.3f %8s %10.2f%s' % (nug, m, f"{w}/{n_}", t, tag))
     E.PRIOR = base_prior
+
+    out = path.replace('.csv', '_sensitivity.csv')
+    pd.DataFrame(rows).to_csv(out, index=False)
+    print(f"\n{len(rows)} settings -> {out}")
 
     print("\nreading this: a margin that stays positive with high win counts")
     print("across all four sweeps means the advantage is a property of the")
