@@ -30,6 +30,30 @@ Parameters are optimised unconstrained and mapped into range:
     sigma2 = exp(theta_2)          > 0
 This keeps L-BFGS-B unconstrained while guaranteeing a valid covariance, and
 avoids the optimiser stalling on a boundary.
+
+KNOWN LIMITATION: the Gaussian likelihood biases the nugget low on skewed
+fields. Measured against the twelve fits in notebook 03:
+
+    skew vs (likelihood nugget - variogram nugget)   r = -0.888
+    kurtosis vs the same gap                         r = -0.306
+    symmetric attributes (|skew| < 0.3, n=6)   mean gap -0.006, max 0.075
+    skewed attributes    (skew > 0.8,  n=6)    mean gap -0.269, max 0.354
+
+The direction is predictable: a Gaussian likelihood cannot place mass in a
+long right tail, so it assigns the tail to signal and drives the nugget toward
+zero. Six of the twelve fits return a nugget of exactly 0.000 and all six are
+skewed hazard or texture attributes. Where this estimator and the variogram
+disagree most, this one is the one expected to be wrong, which is why
+evaluate.py takes its priors from fit_variogram.py and uses this module as an
+independent cross-check rather than as the operating point.
+
+sigma2 is likewise not separately identified from the nugget: it reads
+0.749-1.739 where 1.0 is expected on standardised inputs, and the deviation
+tracks the nugget at r = +0.817. Detrending does not fix it, so it is a ridge
+in the likelihood surface rather than an unmodelled mean. Individual values are
+subsample-dependent and should not be quoted. This does not reach the
+criterion: evaluate.py builds its covariance with a unit diagonal and carries
+no variance scale.
 """
 
 import numpy as np
