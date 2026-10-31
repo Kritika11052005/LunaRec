@@ -1,0 +1,29 @@
+﻿patches_C2.csv: 1930 patches, 20 reps, budget 150
+fitted (isotropic) priors: hazard 2782 m/0.332, illumination 1902 m/0.039, texture 2347 m/0.266
+
+setting                        margin     wins         t ranges (m)
+fitted (isotropic)              0.278    20/20     10.00  2782 1902 2347
+each attr -> SHORT axis         0.232    18/20      6.82  779 1369 1525
+each attr -> LONG axis          0.153    17/20      3.93  3338 3918 2535
+
+margin at fitted settings : +0.278
+worst case under measured anisotropy : +0.153 (t = 3.93)
+retained: 55% of the fitted-setting margin
+
+VERDICT: measured anisotropy is COVERED -- the isotropic GP is adequate, and the global 4x sweep case is a conservative upper bound
+patches_C2.csv: 1930 patches, 20 reps, budget 150
+fitted (isotropic) priors: hazard 2782 m/0.332, illumination 1902 m/0.039, texture 2347 m/0.266
+
+setting                        margin     wins         t ranges (m)
+patches_C2.csv: 1930 patches, 20 reps, budget 150
+fitted (isotropic) priors: hazard 2782 m/0.332, illumination 1902 m/0.039, texture 2347 m/0.266
+
+setting                        margin     wins         t ranges (m)
+patches_C2.csv: 1930 patches, 20 reps, budget 150
+fitted (isotropic) priors: hazard 2782 m/0.332, illumination 1902 m/0.039, texture 2347 m/0.266
+
+setting                        margin     wins         t ranges (m)
+each attr -> LONG axis          0.153    17/20      3.93  3338 3918 2535
+
+(partial run: long) -- combine with the rows already recorded
+

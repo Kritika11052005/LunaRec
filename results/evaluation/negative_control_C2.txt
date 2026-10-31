@@ -1,0 +1,21 @@
+﻿patches_C2.csv: 1930 patches, 20 reps, budget 150, 3 shuffles
+
+REAL field
+  priors: hazard 2782 m/0.332, illumination 1902 m/0.039, texture 2347 m/0.266
+  margin vs ablation: +0.278  (20/20, t = 10.00)
+
+SHUFFLED field -- spatial structure destroyed, marginals preserved
+  shuffle 0  priors 1202/0.95, 3498/0.95, 961/0.95
+             margin -0.010  (7/20, t = -0.40)
+  shuffle 1  priors 1373/0.95, 2669/0.95, 406/0.85
+             margin +0.037  (10/20, t = 1.35)
+  shuffle 2  priors 522/0.92, 424/0.89, 634/0.95
+             margin -0.010  (10/20, t = -0.26)
+
+real      +0.278
+shuffled  +0.006  (mean of 3, range -0.010 to +0.037, max |t| 1.35)
+shuffled margin is 2% of the real one
+
+largest POSITIVE t across shuffles: +1.35  (threshold 2.00)
+VERDICT: PASS -- no advantage survives on structureless data, so the margin on the real field is evidence about the field rather than about the scoring machinery.
+

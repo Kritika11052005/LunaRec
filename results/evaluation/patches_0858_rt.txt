@@ -1,0 +1,52 @@
+﻿data\patches\current\patches_0858_rt.csv: 2010 patches, 400 per rep, K=20, budget=150, 30 reps
+fitted GP priors (per attribute, from this scene):
+  hazard        range   1819 m   nugget 0.235   variogram R2 0.852
+  illumination  range   1143 m   nugget 0.000   variogram R2 0.967
+  texture       range   1504 m   nugget 0.345   variogram R2 0.846
+
+the contribution -- shortlist disagreement
+policy           final dis.     dis. @20 acq to within 5%
+random               0.1800       0.2659            138.7
+coverage             0.1708       0.2622            137.2
+max-variance         0.1677       0.2625            136.1
+voi-value            0.1761       0.2618            140.1
+disagreement         0.1487       0.2566            137.6
+
+standard recommender metrics -- vs the full-information shortlist
+policy            P@K final        sd       NDCG@K  Kendall tau
+random                0.522     0.148        0.917        0.549
+coverage              0.558     0.112        0.917        0.588
+max-variance          0.567     0.086        0.929        0.580
+voi-value             0.528     0.108        0.908        0.581
+disagreement          0.692     0.122        0.944        0.527
+
+Precision@K against acquisition budget -- the realistic regime
+policy                5       10       20       30       50       75      100      150
+random            0.038    0.070    0.093    0.157    0.262    0.333    0.405    0.522
+coverage          0.120    0.095    0.147    0.195    0.240    0.335    0.412    0.558
+max-variance      0.057    0.132    0.173    0.208    0.270    0.337    0.420    0.567
+voi-value         0.113    0.132    0.220    0.270    0.303    0.353    0.392    0.528
+disagreement      0.107    0.178    0.220    0.283    0.353    0.452    0.538    0.692
+per-rep results -> data\patches\current\patches_0858_rt_per_rep.csv
+
+full curve -> data\patches\current\patches_0858_rt_precision_curve.csv  (for the figure)
+
+technical effect -- imaging operations consumed
+policy         acquisitions to P@K>=0.90
+random                          151.0   (not reached within budget)
+coverage                        151.0   (not reached within budget)
+max-variance                    151.0   (not reached within budget)
+voi-value                       151.0   (not reached within budget)
+disagreement                    150.0   (not reached within budget)
+
+paired comparison on Precision@K -- criterion vs each baseline
+baseline        mean diff       wins   t (paired)          p
+random              0.170      25/30         5.53    5.9e-06
+coverage            0.133      22/30         4.31    0.00017
+max-variance        0.125      24/30         4.32    0.00017
+voi-value           0.163      27/30         6.92    1.3e-07  <- ABLATION
+
+disagreement vs max-variance: +11.4% final disagreement
+(negative = worse; the criterion must beat max-variance to matter)
+acquisitions-saved comparison needs both policies to reach P@K>=0.90 within the budget; raise the budget to quote it.
+
