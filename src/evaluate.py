@@ -289,6 +289,27 @@ def acq_to_precision(prec_curve, target=0.90):
     return len(p)
 
 
+def acq_to_match(prec_curve, target):
+    """Acquisitions for this curve to reach, and hold, `target`.
+
+    Differs from acq_to_precision only in that the target is supplied rather
+    than fixed at 0.90. That matters: no baseline reaches 0.90 within 150
+    acquisitions on any scene, so acq_to_precision cannot express a saving --
+    there is nothing to compare against. Setting the target to what the best
+    baseline achieves with its ENTIRE budget asks the operationally meaningful
+    question instead: how many acquisitions does the criterion need to match
+    the best result anything else can produce?
+
+    Computed PER REPETITION so the saving carries a confidence interval and a
+    paired test, like every other claim in the evaluation.
+    """
+    p = np.asarray(prec_curve)
+    for i in range(len(p)):
+        if (p[i:] >= target).all():
+            return i
+    return len(p)
+
+
 def fit_priors(full):
     """Fit range and nugget per attribute from this scene."""
     global PRIOR
@@ -383,14 +404,82 @@ def main(path, n_rep=5, budget=60):
     curve.index.name = 'acquisitions'
     out = path.replace('.csv', '_precision_curve.csv')
     curve.to_csv(out)
+
+    # Per-rep results, not just the mean curve. The curve CSV averages over
+    # reps, which loses exactly what the paired tests need: the per-instance
+    # differences. Writing this means a notebook can recompute margins, wins
+    # and t-statistics from data rather than by parsing printed tables.
+    # Matched-performance saving, per rep and PAIRED: each repetition's target
+    # is the best baseline's own final score in THAT repetition, so the two
+    # policies are compared on the same problem instance.
+    base_pols = [p for p in pols if p != 'disagreement']
+    best_base = max(base_pols, key=lambda p: np.array(res[p]['prec'])[:, -1].mean())
+    match = {}
+    for p in pols:
+        match[p] = [acq_to_match(res[p]['prec'][i],
+                                 res[best_base]['prec'][i][-1])
+                    for i in range(n_rep)]
+
+    per_rep = pd.DataFrame([
+        {"scene": os.path.basename(path).replace(".csv", ""),
+         "policy": p, "rep": i,
+         "acq_to_match_best_base": match[p][i],
+         "best_baseline": best_base,
+         "target": res[best_base]["prec"][i][-1],
+         "prec_final": res[p]["prec"][i][-1],
+         "prec_at_20": res[p]["prec"][i][min(20, budget)],
+         "ndcg_final": res[p]["ndcg"][i][-1],
+         "ent_final": res[p]["ent"][i][-1],
+         "tau": res[p]["tau"][i],
+         "stability": res[p]["stab"][i],
+         "acq_to_p90": res[p]["acq90"][i]}
+        for p in pols for i in range(n_rep)])
+    per_rep["K"] = K
+    per_rep["budget"] = budget
+    per_rep["prior"] = str([(round(r), round(n, 3)) for r, n in PRIOR])
+    rep_out = path.replace(".csv", "_per_rep.csv")
+    per_rep.to_csv(rep_out, index=False)
+    print(f"per-rep results -> {rep_out}")
+
+    # Per-rep CURVES. Without these the matched-performance saving can only be
+    # computed on the averaged curve, which leaves the headline technical-effect
+    # figure as the one claim in the evaluation with no error bar.
+    rec = [(p, i, b, v)
+           for p in pols for i in range(n_rep)
+           for b, v in enumerate(res[p]['prec'][i])]
+    pc_out = path.replace('.csv', '_per_rep_curve.csv')
+    pd.DataFrame(rec, columns=['policy', 'rep', 'acquisitions', 'prec']) \
+      .to_csv(pc_out, index=False)
+    print(f"per-rep curves  -> {pc_out}  ({len(rec)} rows)")
     print(f"\nfull curve -> {out}  (for the figure)")
 
     print("\ntechnical effect -- imaging operations consumed")
-    print('%-14s %22s' % ('policy', 'acquisitions to P@K>=0.90'))
+    print("  (a) acquisitions to a FIXED target of P@K >= 0.90")
+    print('%-14s %22s' % ('policy', 'acq to P@K>=0.90'))
+    reached = 0
     for p in pols:
         a = np.mean(res[p]['acq90'])
         note = '' if a < budget else '   (not reached within budget)'
+        reached += int(a < budget)
         print('%-14s %22.1f%s' % (p, a, note))
+    if reached < 2:
+        print("  -> fewer than two policies reach the fixed target, so no saving")
+        print("     can be quoted from it. Use (b).")
+
+    print("\n  (b) acquisitions to MATCH the best baseline's full-budget score")
+    tgt = np.array([res[best_base]['prec'][i][-1] for i in range(n_rep)])
+    ours_m = np.array(match['disagreement'], float)
+    saved = budget - ours_m
+    sd = saved.std(ddof=1) if n_rep > 1 else 0.0
+    ci = 1.96 * sd / np.sqrt(n_rep) if n_rep > 1 else 0.0
+    print(f"      best baseline   : {best_base}  (target {tgt.mean():.3f})")
+    print(f"      criterion reaches it at {ours_m.mean():.1f} of {budget} acquisitions")
+    print(f"      saved           : {saved.mean():.1f} +/- {ci:.1f} (95% CI), "
+          f"{100*saved.mean()/budget:.0f}%")
+    print(f"      reps where the criterion got there early: "
+          f"{int((saved > 0).sum())}/{n_rep}")
+    print("      -> this is the sentence for the specification: a measured")
+    print("         reduction in use of a scarce imaging instrument.")
 
     print("\npaired comparison on Precision@K -- criterion vs each baseline")
     print('%-14s %10s %10s %12s %10s' % ('baseline', 'mean diff', 'wins',
