@@ -42,21 +42,38 @@ subsample so every test is paired.
 | acquisitions saved | 26 % | 29 % | 44 % | 37 % |
 
 Sixteen comparisons — four baselines × four scenes — all positive, all
-significant, all surviving Holm correction for multiple testing.
+significant, all surviving Holm correction for multiple testing. These sixteen
+are the confirmatory family and the correction covers exactly them; the
+shortlist-length, prior-misspecification and anisotropy sweeps reported under
+*Known limitations* are exploratory and are not inside it.
 
 The ablation (`voi-value`) is identical to the criterion except that it is blind
 to shortlist structure — same posterior variance, same spatial propagation, same
 division by cost. The gap between them is what the shortlist framing buys.
 
 **Technical effect.** To reach the best shortlist quality any baseline achieves,
-the criterion needs **34 % fewer acquisitions** of the high-resolution
-instrument (26–44 % across scenes). That is a measured reduction in operations
-of a scarce resource rather than a change in a statistic.
+the criterion needs **38 % ± 4.2 fewer acquisitions** of the high-resolution
+instrument — a 95 % interval over 120 scene-repetitions, paired, each
+repetition's target taken from the best baseline's own score on that same
+repetition. The figure is a floor rather than a central estimate: 14 of the 120
+repetitions never reach the target and are scored as zero saving rather than
+dropped.
+
+The per-scene row in the table above (26 %/29 %/44 %/37 %, mean 34 %) is the
+same quantity computed on rep-averaged curves. The two differ because
+threshold-crossing is a nonlinear function of a curve, so averaging the curves
+before finding the crossing is not the same as averaging the crossings; the
+per-repetition figure is the one carrying an interval and a paired design. Both
+are given because quoting one alone invites the question of what the other
+says. Either way it is a measured reduction in operations of a scarce
+instrument rather than a change in a statistic.
 
 **Where it applies.** The advantage holds above roughly half the best achievable
-precision, and from about 75 acquisitions of 400 candidates. Below that, simpler
-policies reach a low bar faster. This method addresses campaign-scale screening
-of hundreds of candidate patches, not the selection of a handful of sites.
+precision, and from about 75 acquisitions of 400 candidates — a threshold that
+grows with the candidate set, roughly as its square root (see *Known
+limitations*). Below it, simpler policies reach a low bar faster. This method
+addresses campaign-scale screening of hundreds of candidate patches, not the
+selection of a handful of sites.
 
 ## Layout
 
@@ -82,6 +99,12 @@ python src/sensitivity.py      data/patches/current/patches_C2.csv 20 150
 python src/negative_control.py data/patches/current/patches_C2.csv 20 150 3
 ```
 
+Three further scripts produce the sensitivity results quoted below:
+`src/scaling_n.py` (crossover against candidate-set size), `src/effect_vs_k.py`
+(technical effect against shortlist length) and `src/targeted_aniso.py`
+(per-attribute range perturbation). Their arguments differ from the pattern
+above and are documented in each script's docstring.
+
 `evaluate.py` imports `fit_variogram.py`; keep them in the same directory. The
 GP prior is fitted per scene at every run — nothing is hardcoded.
 
@@ -103,13 +126,26 @@ a result file can never be ambiguous about which model produced it.
   candidates, and the criterion degenerates toward its own ablation.
 
 - **Shortlist length is the one real sensitivity.** The margin runs 0.440 at
-  K = 5 down to 0.047 at K = 50 (14/20, t = 2.26). Every headline figure here is
-  measured at K = 20.
+  K = 5 down to 0.047 at K = 50 (14/20, t = 2.26; 20 repetitions). The
+  acquisition saving falls the same way — 40 %, 39 %, 35 %, 19 %, 8 % at
+  K = 5, 10, 20, 35, 50 — so the effect is real across the range a shortlist
+  would plausibly take but shrinks fivefold across it. Every headline figure
+  here is measured at K = 20.
 
-- **Prior misspecification is tolerated from 0.25× to 2× the fitted range**, and
-  across nugget values 0.00–0.60. At 4× the margin falls to 0.042 (11/20,
-  t = 1.07) and is no longer significant. An earlier version of this file
-  claimed the advantage "holds throughout" a 0.25×–4× sweep; that was wrong.
+- **Prior misspecification is tolerated from 0.25× to 3× the fitted range**, and
+  across nugget values 0.00–0.60. The 3× point was measured rather than
+  interpolated: margin 0.113 (t = 2.24, p = 0.037), still significant. At 4× it
+  falls to 0.042 (11/20, t = 1.07) and is not. An earlier version of this file
+  claimed the advantage "holds throughout" a 0.25×–4× sweep, which was wrong; a
+  later one bracketed the edge at 2× without measuring between 2× and 4×.
+
+- **The acquisition requirement grows with the candidate set.** The crossover —
+  where the criterion becomes reliably best — scales as n^0.531, close to √n:
+  75 acquisitions at n = 400, and at n = 1600 the fit from n = 400 and 800
+  predicted 158 out-of-sample against 165 measured. The margin itself grows
+  with n (0.317 → 0.388 → 0.429), so larger campaigns favour the method, but
+  the budget before it pays off grows with them. Measured on C2; the other
+  three scenes are assumed to behave similarly.
 
 - **The hazard label is illumination-conditional.** `shadow_local` measures
   shadow fraction against a local background, and shadows are cast by the sun.
@@ -137,15 +173,32 @@ a result file can never be ambiguous about which model produced it.
   place mass in a long right tail and assigns it to signal instead.
 
 - **The field is anisotropic and the GP is isotropic.** Directional ranges
-  differ by 1.7–4.6×, reproducibly across independent acquisitions of the same
-  ground, and the preferred direction depends on the lag — short-lag structure
-  peaks at 90° in all twelve scene–attribute combinations while the kilometre-
-  scale ranges peak elsewhere. Setting each attribute's range to its own
-  measured long axis costs 45 % of the margin while leaving it significant
-  (0.153, 17/20, t = 3.93). Whether part of the effect is a pushbroom sampling
-  artefact cannot be determined from four scenes whose along-track directions
-  span only 11°. A scene-difference test rules out an acquisition artefact in
-  the registration itself (R² < 0.006 in both directions).
+  differ by 1.7–4.6× at a 4 km lag window (median 2.68), reproducibly across
+  independent acquisitions of the same ground: cluster B illumination is
+  longest at 45° and shortest at 135° in both scenes, cluster C hazard longest
+  at 45° in both.
+
+  Setting each attribute's range to its own measured long axis retains
+  86 %/143 %/81 %/55 % of the margin across the four scenes, mean **91 %** — so
+  the cost is about 9 %. An earlier version of this file reported 45 %, which
+  was the C2-only figure (0.153, 17/20, t = 3.93) generalised from one scene.
+
+  The preferred direction is scale-dependent. At the 200 m grid spacing the
+  strongest direction is 90° in all twelve scene–attribute combinations,
+  measured against 0° at matched distance (median gap 0.121, max 0.211; the
+  narrowest, 1647a texture, is 0.006 and is effectively a tie). The
+  kilometre-scale fitted ranges peak elsewhere, at 45°. The two are not
+  directly comparable, since the 45°/135° neighbours sit at 283 m against
+  200 m on the axes, but a direction that dominates at the grid spacing while
+  not being the longest-range direction is not something one spherical range
+  per attribute can represent. Measured in `notebooks/03_spatial_structure.ipynb`
+  §2's directional test, which uses fixed-distance neighbours and so is
+  unaffected by the lag-window limit below.
+
+  Whether part of the effect is a pushbroom sampling artefact cannot be
+  determined from four scenes whose along-track directions span only 11°. A
+  scene-difference test rules out an acquisition artefact in the registration
+  itself (R² < 0.006 in both directions).
 
   Variogram windows are capped at 4 km: a lag window must not exceed about half
   the smallest scene dimension, and these scenes are 11.2–17.2 km across. Where
